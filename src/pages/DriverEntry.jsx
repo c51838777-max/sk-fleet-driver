@@ -314,10 +314,23 @@ const DriverEntry = () => {
 
             {showSlip && (
                 <SalarySlip
-                    driverName={formData.driverName || 'ไม่ระบุชื่อ'}
-                    trips={trips.filter(t => t.driverName === formData.driverName)}
+                    driverName={formData.driverName}
+                    trips={(() => {
+                        const now = new Date();
+                        const currentMonth = now.getMonth();
+                        const currentYear = now.getFullYear();
+                        const startDate = new Date(currentYear, currentMonth - 1, 20);
+                        const endDate = new Date(currentYear, currentMonth, 19);
+
+                        return trips.filter(t => {
+                            if (!t.date || (t.driverName !== formData.driverName && t.driver_name !== formData.driverName)) return false;
+                            const [y, m, d] = t.date.split('-').map(Number);
+                            const checkDate = new Date(y, m - 1, d);
+                            return checkDate >= startDate && checkDate <= endDate;
+                        });
+                    })()}
                     onClose={() => setShowSlip(false)}
-                    period="เดือนปัจจุบัน"
+                    period={`รอบวันที่ 20 - 19 ของเดือนปัจจุบัน`}
                 />
             )}
         </div>
