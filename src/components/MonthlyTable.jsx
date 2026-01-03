@@ -2,16 +2,8 @@ import React from 'react';
 import { Download, ChevronLeft, ChevronRight, Plus, Edit2, Trash2, ReceiptText } from 'lucide-react';
 import SalarySlip from './SalarySlip';
 
-const MonthlyTable = ({ currentMonth, currentYear, trips, onMonthChange, onExport, onSelectDate, onEditTrip, onDeleteTrip }) => {
+const MonthlyTable = ({ currentMonth, currentYear, trips, onMonthChange, onExport, onSelectDate, onEditTrip, onDeleteTrip, cnDeductions, setCnDeductions }) => {
     const [selectedDriverForSlip, setSelectedDriverForSlip] = React.useState(null);
-    const [cnDeductions, setCnDeductions] = React.useState(() => {
-        const saved = localStorage.getItem('pattatha_cn_deductions');
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    React.useEffect(() => {
-        localStorage.setItem('pattatha_cn_deductions', JSON.stringify(cnDeductions));
-    }, [cnDeductions]);
 
     const months = [
         'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
@@ -45,17 +37,16 @@ const MonthlyTable = ({ currentMonth, currentYear, trips, onMonthChange, onExpor
         return {
             ...dayTrips.reduce((acc, trip) => ({
                 route: dayTrips.map(t => t.route).join(', '),
-                driverName: dayTrips.map(t => t.driverName || t.driver_name).filter(n => n).join(', ') || '-',
-                price: acc.price + (parseFloat(trip.price) || 0),
-                fuel: acc.fuel + (parseFloat(trip.fuel) || 0),
-                wage: acc.wage + (parseFloat(trip.wage) || 0),
-                basket: acc.basket + (parseFloat(trip.basket) || 0),
-                staffShare: acc.staffShare + (parseFloat(trip.staffShare || trip.advance || trip.staff_advance) || 0),
-                maintenance: acc.maintenance + (parseFloat(trip.maintenance) || 0),
-                advance: acc.advance + (parseFloat(trip.advance) || 0),
-                basketShare: acc.basketShare + (parseFloat(trip.basketShare || trip.basket_share || trip.staff_share) || 0),
-                profit: acc.profit + (parseFloat(trip.profit) || 0)
-            }), { price: 0, fuel: 0, wage: 0, basket: 0, staffShare: 0, maintenance: 0, advance: 0, basketShare: 0, profit: 0 }),
+                driverName: dayTrips.map(t => t.driverName).filter(n => n).join(', ') || '-',
+                price: acc.price + trip.price,
+                fuel: acc.fuel + trip.fuel,
+                wage: acc.wage + trip.wage,
+                basket: acc.basket + trip.basket,
+                staffShare: acc.staffShare + trip.staffShare,
+                maintenance: acc.maintenance + trip.maintenance,
+                basketShare: acc.basketShare + trip.basketShare,
+                profit: acc.profit + trip.profit
+            }), { price: 0, fuel: 0, wage: 0, basket: 0, staffShare: 0, maintenance: 0, basketShare: 0, profit: 0 }),
             count: dayTrips.length,
             items: dayTrips
         };
@@ -173,13 +164,12 @@ const MonthlyTable = ({ currentMonth, currentYear, trips, onMonthChange, onExpor
                                     fuel: acc.fuel + (data.fuel || 0),
                                     wage: acc.wage + (data.wage || 0),
                                     maintenance: acc.maintenance + (data.maintenance || 0),
-                                    advance: acc.advance + (data.advance || 0),
                                     basket: acc.basket + (data.basket || 0),
                                     basketShare: acc.basketShare + (data.basketShare || 0),
                                     staffShare: acc.staffShare + (data.staffShare || 0),
                                     profit: acc.profit + (data.profit || 0)
                                 };
-                            }, { price: 0, fuel: 0, wage: 0, maintenance: 0, advance: 0, basket: 0, basketShare: 0, staffShare: 0, profit: 0 });
+                            }, { price: 0, fuel: 0, wage: 0, maintenance: 0, basket: 0, basketShare: 0, staffShare: 0, profit: 0 });
 
                             return (
                                 <tr style={{ fontWeight: 'bold' }}>
@@ -217,15 +207,12 @@ const MonthlyTable = ({ currentMonth, currentYear, trips, onMonthChange, onExpor
                             const m = String(date.getMonth() + 1).padStart(2, '0');
                             const d = String(date.getDate()).padStart(2, '0');
                             const dateStr = `${y}-${m}-${d}`;
-                            return trips.filter(t => t.date === dateStr).map(t => ({
-                                ...t,
-                                driverName: t.driverName || t.driver_name || 'ไม่ระบุชื่อ'
-                            }));
+                            return trips.filter(t => t.date === dateStr);
                         });
 
                         const driversMap = {};
                         tripsInPeriod.forEach(t => {
-                            const name = (t.driverName || t.driver_name || 'ไม่ระบุชื่อ').trim();
+                            const name = t.driverName || 'ไม่ระบุชื่อ';
                             if (!driversMap[name]) driversMap[name] = [];
                             driversMap[name].push(t);
                         });

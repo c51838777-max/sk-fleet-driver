@@ -103,6 +103,8 @@ const Dashboard = () => {
                     onSelectDate={handleSelectDate}
                     onEditTrip={handleEditTrip}
                     onDeleteTrip={deleteTrip}
+                    cnDeductions={cnDeductions}
+                    setCnDeductions={setCnDeductions}
                 />
             ) : (
                 <TripTable

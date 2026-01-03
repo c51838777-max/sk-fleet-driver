@@ -56,36 +56,49 @@ export const useTrips = () => {
     };
 
     const normalizeTrip = (t) => {
-        // DRIVE NAME: Look for any common column name
-        const driverName = t.driver_name || t.driverName || t.driver || t.staff || t.name || '';
+        // DRIVE NAME: Trim and collapse multiple spaces into one
+        const driverName = (t.driverName || t.driver_name || t.driver || t.staff || t.name || '')
+            .trim()
+            .replace(/\s+/g, ' ');
 
-        // BASKET SHARE (ส่วนแบ่งตะกร้า): Priority: basketShare -> basket_share -> staff_share
-        const basketShare = parseFloat(t.basketShare) || parseFloat(t.basket_share) || parseFloat(t.staff_share) || 0;
-        // STAFF SHARE (ยอดเบิก/Advance): Priority: staffShare -> advance -> staff_advance -> staff_share (as fallback)
+        // Standardize ALL financial fields
+        const price = parseFloat(t.price) || 0;
+        const fuel = parseFloat(t.fuel) || 0;
+        const wage = parseFloat(t.wage) || 0;
+        const maintenance = parseFloat(t.maintenance) || 0;
+        const basket = parseFloat(t.basket) || 0;
+
+        // Advance (ยอดเบิก): Use any variant but consolidate to staffShare
         const staffShare = parseFloat(t.staffShare) || parseFloat(t.advance) || parseFloat(t.staff_advance) || 0;
 
+        // Basket Share (ส่วนแบ่งตะกร้า): Priority to basketShare, then variants
+        const basketShare = parseFloat(t.basketShare) || parseFloat(t.basket_share) || 0;
+
+        // Profit calculation (Revenue - Expenses)
+        // Revenue = price (trip fee) + basket (basket revenue)
+        // Expenses = fuel + wage + maintenance + basketShare (what we pay driver for baskets)
+        const profit = (price + basket) - (fuel + wage + maintenance + basketShare);
+
         return {
-            ...t,
             id: t.id,
-            driverName,
-            price: parseFloat(t.price) || 0,
-            fuel: parseFloat(t.fuel) || 0,
-            wage: parseFloat(t.wage) || 0,
-            basket: parseFloat(t.basket) || 0,
-            maintenance: parseFloat(t.maintenance) || 0,
-            profit: parseFloat(t.profit) || 0,
-            basketCount: parseInt(t.basket_count || t.basketCount || 0),
-            basketShare,
-            staffShare,
             date: (() => {
                 if (!t.date) return getLocalDate();
                 if (typeof t.date === 'string') return t.date.split('T')[0];
                 const d = new Date(t.date);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            })()
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })(),
+            driverName,
+            price,
+            fuel,
+            wage,
+            maintenance,
+            basket,
+            basketCount: parseInt(t.basket_count || t.basketCount || 0),
+            basketShare,
+            staffShare,
+            profit,
+            // Keep original source just in case, but code should use normalized fields
+            _original: t
         };
     };
 
@@ -119,45 +132,46 @@ export const useTrips = () => {
         }
     };
 
-    const calculateStats = (tripsToProcess) => {
+    const [cnDeductions, setCnDeductions] = useState(() => {
+        const saved = localStorage.getItem('pattatha_cn_deductions');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pattatha_cn_deductions', JSON.stringify(cnDeductions));
+    }, [cnDeductions]);
+
+    const calculateStats = (tripsToProcess, currentCnDeductions = {}) => {
         const stats = tripsToProcess.reduce((acc, t) => {
-            const price = parseFloat(t.price) || 0;
-            const wage = parseFloat(t.wage) || 0;
-            const fuel = parseFloat(t.fuel) || 0;
-            const maintenance = parseFloat(t.maintenance) || 0;
-            const basketRevenue = parseFloat(t.basket) || 0;
-            const basketShare = parseFloat(t.basketShare) || 0;
-            const advance = parseFloat(t.staffShare) || 0;
-
             acc.totalTrips += 1;
-            acc.totalRevenue += price + basketRevenue;
-            acc.totalWages += wage;
-            acc.totalFuel += fuel;
-            acc.totalMaintenance += maintenance;
-            acc.totalBasket += basketShare;
-            acc.totalStaffAdvance += advance;
-            acc.totalProfit += (price + basketRevenue) - (wage + fuel + maintenance + basketShare);
-
+            acc.totalRevenue += t.price + t.basket;
+            acc.totalWages += t.wage;
+            acc.totalFuel += t.fuel;
+            acc.totalMaintenance += t.maintenance;
+            acc.totalBasket += t.basketShare;
+            acc.totalStaffAdvance += t.staffShare;
+            acc.totalProfit += t.profit;
             return acc;
         }, {
             totalTrips: 0, totalRevenue: 0, totalWages: 0, totalFuel: 0,
             totalMaintenance: 0, totalBasket: 0, totalStaffAdvance: 0, totalProfit: 0, totalRemainingPay: 0
         });
 
-        // Calculate totalRemainingPay correctly per driver
+        // Calculate totalRemainingPay correctly per driver with housing allowance and CN deductions
         const drivers = {};
         tripsToProcess.forEach(t => {
-            const name = t.driverName || 'Unknown';
+            const name = t.driverName || 'ไม่ระบุชื่อ';
             if (!drivers[name]) {
                 drivers[name] = { wage: 0, basketShare: 0, advance: 0 };
             }
-            drivers[name].wage += parseFloat(t.wage) || 0;
-            drivers[name].basketShare += parseFloat(t.basketShare) || 0;
-            drivers[name].advance += parseFloat(t.staffShare) || 0;
+            drivers[name].wage += t.wage;
+            drivers[name].basketShare += t.basketShare;
+            drivers[name].advance += t.staffShare;
         });
 
-        stats.totalRemainingPay = Object.values(drivers).reduce((sum, d) => {
-            return sum + (d.wage + d.basketShare + 1000) - d.advance;
+        stats.totalRemainingPay = Object.entries(drivers).reduce((sum, [name, d]) => {
+            const cn = parseFloat(currentCnDeductions[name]) || 0;
+            return sum + (d.wage + d.basketShare + 1000) - d.advance - cn;
         }, 0);
 
         return stats;
@@ -169,17 +183,19 @@ export const useTrips = () => {
 
         const currentMonthTrips = trips.filter(t => {
             if (!t.date) return false;
-            // Parse YYYY-MM-DD as local date
             const [y, m, d] = t.date.split('-').map(Number);
             const checkDate = new Date(y, m - 1, d);
             return checkDate >= startDate && checkDate <= endDate;
         });
-        return calculateStats(currentMonthTrips);
-    }, [trips, currentMonth, currentYear]);
+        return calculateStats(currentMonthTrips, cnDeductions);
+    }, [trips, currentMonth, currentYear, cnDeductions]);
 
     const yearlyStats = useMemo(() => {
-        const currentYearTrips = trips.filter(t => new Date(t.date).getFullYear() === currentYear);
-        return calculateStats(currentYearTrips);
+        const currentYearTrips = trips.filter(t => {
+            const [y] = t.date.split('-').map(Number);
+            return y === currentYear;
+        });
+        return calculateStats(currentYearTrips, {}); // CN is monthly, maybe ignore for yearly for now
     }, [trips, currentYear]);
 
     const calculateProfit = (price, fuel, wage, basket, staffShare, maintenance, basketShare) => {
@@ -272,9 +288,13 @@ export const useTrips = () => {
     };
 
     const getTripsForMonth = (month, year) => {
+        const startDate = new Date(year, month - 1, 20);
+        const endDate = new Date(year, month, 19);
         return trips.filter(t => {
-            const d = new Date(t.date);
-            return d.getMonth() === month && d.getFullYear() === year;
+            if (!t.date) return false;
+            const [y, m, d] = t.date.split('-').map(Number);
+            const checkDate = new Date(y, m - 1, d);
+            return checkDate >= startDate && checkDate <= endDate;
         });
     };
 
@@ -288,6 +308,6 @@ export const useTrips = () => {
     return {
         trips, routePresets, loading, currentMonth, currentYear,
         setCurrentMonth, setCurrentYear, fetchTrips, addTrip, deleteTrip, updateTrip, deletePreset,
-        stats, yearlyStats, getTripsForMonth
+        stats, yearlyStats, getTripsForMonth, cnDeductions, setCnDeductions
     };
 };
