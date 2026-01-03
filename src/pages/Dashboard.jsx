@@ -13,7 +13,8 @@ const Dashboard = () => {
         trips, addTrip, deleteTrip, updateTrip, stats, yearlyStats,
         currentMonth, setCurrentMonth,
         currentYear, setCurrentYear,
-        getTripsForMonth, routePresets
+        getTripsForMonth, routePresets,
+        cnDeductions, setCnDeductions
     } = useTrips();
 
     const [viewMode, setViewMode] = useState('monthly');

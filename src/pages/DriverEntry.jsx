@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTrips } from '../hooks/useTrips';
 import { Save, Truck, CheckCircle2, Edit, Trash2, X, Wallet } from 'lucide-react';
 import { getLocalDate } from '../utils/dateUtils';
 import SalarySlip from '../components/SalarySlip';
 
 const DriverEntry = () => {
-    const { addTrip, deleteTrip, updateTrip, routePresets, stats, trips } = useTrips();
+    const { addTrip, deleteTrip, updateTrip, routePresets, stats, trips, cnDeductions } = useTrips();
     const [submitted, setSubmitted] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [showSlip, setShowSlip] = useState(false);
@@ -344,6 +344,7 @@ const DriverEntry = () => {
                     })()}
                     onClose={() => setShowSlip(false)}
                     period={`รอบวันที่ 20 - 19 ของเดือนปัจจุบัน`}
+                    cnDeduction={cnDeductions[formData.driverName] || 0}
                 />
             )}
         </div>
