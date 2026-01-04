@@ -1,16 +1,16 @@
 {
-    "name": "SK FLEET SOLUTIONS",
-    "short_name": "SK FLEET",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#0a0a0a",
-    "theme_color": "#0a0a0a",
+    "short_name": "ตารางวิ่งงาน",
+    "name": "ตารางค่าเที่ยววิ่งงาน Golden Juno",
     "icons": [
         {
-            "src": "/app-icon.png",
+            "src": "app-icon.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
         }
-    ]
+    ],
+    "start_url": "./#/driver",
+    "display": "standalone",
+    "theme_color": "#002a16",
+    "background_color": "#000a06"
 }
