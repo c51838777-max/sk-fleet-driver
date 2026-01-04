@@ -1,6 +1,6 @@
 {
-    "short_name": "ตารางวิ่งงาน",
-    "name": "ตารางค่าเที่ยววิ่งงาน Golden Juno",
+    "short_name": "SK ADMIN",
+    "name": "SK FLEET SOLUTIONS - ADMIN",
     "icons": [
         {
             "src": "app-icon.png",
@@ -9,8 +9,8 @@
             "purpose": "any maskable"
         }
     ],
-    "start_url": "./#/driver",
+    "start_url": "/",
     "display": "standalone",
     "theme_color": "#002a16",
-    "background_color": "#000a06"
+    "background_color": "#000000"
 }
